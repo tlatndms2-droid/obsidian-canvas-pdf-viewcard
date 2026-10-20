@@ -1,0 +1,9 @@
+{
+  "id": "canvas-pdf-viewcard",
+  "name": "Canvas PDF Viewcard",
+  "version": "0.1.0",
+  "minAppVersion": "1.8.7",
+  "description": "Fit PDFs to Canvas cards and read them in a large, independent preview with flexible page layouts.",
+  "author": "tlatn",
+  "isDesktopOnly": true
+}

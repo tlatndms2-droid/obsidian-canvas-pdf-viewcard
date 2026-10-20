@@ -1,0 +1,47 @@
+.canvas-node.cpv-managed > .canvas-node-container > .canvas-node-content,
+.canvas-node.cpv-managed .canvas-node-content-blocker { display: none !important; }
+.cpv-managed > .canvas-node-container { position: relative; }
+.cpv-viewer { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; color: var(--text-normal); background: var(--background-primary); }
+.cpv-card-viewer { position: absolute; inset: 0; border-radius: inherit; }
+.canvas-node:not(.is-focused) .cpv-card-viewer .cpv-viewport { overflow: hidden; }
+.cpv-toolbar { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 5px 8px; min-height: 38px; background: var(--background-primary); z-index: 2; border-bottom: 1px solid var(--background-modifier-border); }
+.cpv-card-viewer .cpv-toolbar { border-bottom: none; border-top: 1px solid var(--background-modifier-border); }
+.cpv-toolbar-space { flex: 1; min-width: 0; }
+.cpv-toolbar button { box-shadow: none; background: transparent; color: var(--text-muted); height: 28px; flex-shrink: 0; cursor: pointer; border: 1px solid transparent; }
+.cpv-toolbar button:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.cpv-toolbar button:focus-visible, .cpv-page-input:focus-visible { outline: 2px solid var(--interactive-accent); outline-offset: -2px; }
+.cpv-toolbar button:disabled { opacity: .35; cursor: default; }
+.cpv-icon-button { width: 28px; padding: 5px !important; display: inline-flex; align-items: center; justify-content: center; }
+.cpv-icon-button svg { width: 17px; height: 17px; }
+.cpv-text-button { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px !important; font-size: 12px; white-space: nowrap; }
+.cpv-chevron { display: flex; }
+.cpv-chevron svg { width: 12px; height: 12px; }
+.cpv-page-input[type=number] { width: 42px; height: 27px; padding: 2px 3px; text-align: center; font-size: 12px; box-shadow: none; background: var(--background-primary); border: 1px solid var(--background-modifier-border); border-radius: 4px; appearance: textfield; }
+.cpv-page-input::-webkit-inner-spin-button, .cpv-page-input::-webkit-outer-spin-button { appearance: none; margin: 0; }
+.cpv-page-total { font-size: 12px; color: var(--text-muted); white-space: nowrap; padding-right: 2px; }
+.cpv-viewport { position: relative; flex: 1 1 0; min-height: 0; overflow: auto; background: var(--background-secondary); padding: 12px; scrollbar-gutter: auto; overscroll-behavior: contain; }
+.cpv-page-row { display: flex; justify-content: center; align-items: flex-start; gap: 12px; width: max-content; min-width: 100%; margin: 0 auto 12px; position: relative; }
+.cpv-page-row:last-child { margin-bottom: 0; }
+.cpv-page { position: relative; flex-shrink: 0; background: white; box-shadow: 0 1px 5px #0002; overflow: hidden; }
+.cpv-page canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.cpv-page-placeholder { position: absolute; inset: 0; display: grid; place-items: center; color: #aaa; font-size: 14px; }
+.cpv-page-ready .cpv-page-placeholder { display: none; }
+.cpv-page-error { position: absolute; inset: 0; display: grid; place-items: center; color: #a33; background: white; }
+.cpv-status { height: 100%; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; text-align: center; padding: 20px; color: var(--text-muted); }
+.cpv-error-detail { font-size: 12px; overflow-wrap: anywhere; max-width: 100%; }
+.modal.cpv-modal { width: 92vw; max-width: 1600px; height: 92vh; max-height: 92vh; padding: 16px 0 0; }
+.cpv-modal .modal-title { padding: 0 44px 12px 20px; margin: 0; font-size: 17px; }
+.cpv-modal .modal-content { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; margin: 0; }
+.cpv-popup-viewer { flex: 1; min-height: 0; }
+.cpv-popup-viewer .cpv-toolbar { padding: 7px 16px; border-top: 1px solid var(--background-modifier-border); flex-wrap: wrap; }
+.cpv-popup-viewer .cpv-toolbar-space { flex: 0 0 12px; }
+.cpv-popup-viewer .cpv-text-button { border-color: var(--background-modifier-border); margin-left: 4px; }
+.cpv-popup-footer { text-align: center; padding: 7px 12px; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--background-modifier-border); }
+.cpv-zoom-label { min-width: 42px; text-align: center; color: var(--text-muted); font-size: 12px; }
+.cpv-managed { container-type: inline-size; }
+@container (max-width: 260px) {
+  .cpv-card-viewer .cpv-toolbar { gap: 1px; padding-inline: 3px; }
+  .cpv-card-viewer .cpv-page-input { width: 32px; }
+  .cpv-card-viewer .cpv-icon-button { width: 23px; }
+  .cpv-card-viewer .cpv-text-button { padding-inline: 3px !important; }
+}

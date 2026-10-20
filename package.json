@@ -1,0 +1,17 @@
+{
+  "name": "obsidian-canvas-pdf-viewcard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Responsive PDF cards and an independent reading popup for Obsidian Canvas.",
+  "scripts": {
+    "build": "tsc --noEmit && node esbuild.config.mjs",
+    "test": "tsx --test tests/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.25.0",
+    "obsidian": "^1.8.7",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0"
+  }
+}

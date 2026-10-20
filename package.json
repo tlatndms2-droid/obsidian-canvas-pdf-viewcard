@@ -1,6 +1,6 @@
 {
   "name": "obsidian-canvas-pdf-viewcard",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "Responsive PDF cards and an independent reading popup for Obsidian Canvas.",
   "scripts": {

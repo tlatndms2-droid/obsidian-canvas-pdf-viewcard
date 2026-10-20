@@ -1,4 +1,4 @@
-import { Modal, Notice, Plugin, Scope, TFile, WorkspaceLeaf } from "obsidian";
+import { KeymapEventHandler, Modal, Notice, Plugin, Scope, TFile, WorkspaceLeaf } from "obsidian";
 import { cardInitial, cardKey, defaultPopup, normalizeState, Settings } from "./model";
 import { PdfPool } from "./pdf-pool";
 import { PdfViewer } from "./viewer";
@@ -25,6 +25,7 @@ export default class CanvasPdfViewcard extends Plugin {
   pool!: PdfPool;
   private mounted=new Map<CanvasNode,Mounted>();
   private observers=new Map<CanvasView,MutationObserver>();
+  private enterBindings=new Map<CanvasView,KeymapEventHandler>();
   private popups=new Set<Modal>();
   private scanTimer?:number;
   private saveTimer?:number;
@@ -61,7 +62,11 @@ export default class CanvasPdfViewcard extends Plugin {
     if(this.stopped)return;
     const views=new Set(this.app.workspace.getLeavesOfType("canvas").map((l:WorkspaceLeaf)=>l.view as unknown as CanvasView));
     const live=new Set<CanvasNode>();
-    for(const [view,observer] of this.observers)if(!views.has(view)){observer.disconnect();this.observers.delete(view);}
+    for(const [view,observer] of this.observers)if(!views.has(view)){
+      observer.disconnect();this.observers.delete(view);
+      const binding=this.enterBindings.get(view);if(binding)view.scope.unregister(binding);
+      this.enterBindings.delete(view);
+    }
     for(const view of views) {
       const canvas=view.canvas;
       if(!canvas?.nodes||!view.file)continue;
@@ -70,6 +75,25 @@ export default class CanvasPdfViewcard extends Plugin {
           if(records.some(r=>!(r.target as Element).closest?.(".cpv-viewer")))this.schedule();
         });
         observer.observe(view.contentEl,{childList:true,subtree:true});this.observers.set(view,observer);
+        // A wildcard binding can fall through for every unrelated Canvas action.
+        const binding=view.scope.register(null,null,event=>{
+          if(event.key!=="Enter"||event.altKey||event.shiftKey||event.metaKey)return;
+          const target=event.target as HTMLElement;
+          if(target.closest("input,textarea,[contenteditable=true]"))return;
+          if(canvas.selection.size!==1)return;
+          const node=canvas.selection.values().next().value;
+          const mounted=node&&this.mounted.get(node);if(!mounted)return;
+          event.preventDefault();event.stopPropagation();
+          if(!event.repeat){
+            if(event.ctrlKey){mounted.viewer.exitReading();this.openPopup(mounted.file,mounted.viewer.state.page);}
+            else mounted.viewer.toggleReading();
+          }
+          return false;
+        });
+        // Canvas may have a catch-all handler before custom bindings.
+        const keys=(view.scope as Scope & {keys:KeymapEventHandler[]}).keys;
+        keys.splice(keys.indexOf(binding),1);keys.unshift(binding);
+        this.enterBindings.set(view,binding);
       }
       for(const node of canvas.nodes.values()){
         const data=node.getData?.();
@@ -104,7 +128,7 @@ export default class CanvasPdfViewcard extends Plugin {
     const dblclick=(event:MouseEvent)=>{
       if((event.target as Element).closest(".cpv-toolbar"))return;
       if(!(event.target as Element).closest(".cpv-viewer,.canvas-node-content,.canvas-node-content-blocker"))return;
-      event.preventDefault();event.stopImmediatePropagation();open();
+      event.preventDefault();event.stopImmediatePropagation();viewer.exitReading();open();
     };
     node.nodeEl.addEventListener("dblclick",dblclick,true);
     this.mounted.set(node,{node,viewer,file,stamp:file.stat.mtime,key,subpath,child,dispose:()=>node.nodeEl.removeEventListener("dblclick",dblclick,true)});
@@ -121,6 +145,10 @@ export default class CanvasPdfViewcard extends Plugin {
   private openPopup(file:TFile,page:number) {
     if(this.stopped||this.popups.size)return;
     const modal=new Modal(this.app);
+    modal.scope.register([],"Enter",event=>{
+      if((event.target as HTMLElement).closest("input,textarea,[contenteditable=true]"))return;
+      event.preventDefault();event.stopPropagation();if(!event.repeat)modal.close();return false;
+    });
     let viewer:PdfViewer|undefined;
     modal.onOpen=()=>{
       modal.modalEl.classList.add("cpv-modal");modal.setTitle(file.name);
@@ -129,7 +157,7 @@ export default class CanvasPdfViewcard extends Plugin {
         keymap:this.app.keymap,parentScope:modal.scope,
         changed:state=>{const {page:_,...settings}=state;this.settings.popup=settings;this.persist();},
       });
-      modal.contentEl.createDiv({cls:"cpv-popup-footer",text:"팝업에서 읽은 페이지는 카드에 반영되지 않습니다."});
+      modal.contentEl.createDiv({cls:"cpv-popup-footer",text:"Enter 또는 Esc로 복귀 · 팝업에서 읽은 페이지는 카드에 반영되지 않습니다."});
     };
     modal.onClose=()=>{viewer?.destroy();this.popups.delete(modal);};
     this.popups.add(modal);modal.open();
@@ -148,6 +176,8 @@ export default class CanvasPdfViewcard extends Plugin {
   onunload() {
     this.stopped=true;window.clearTimeout(this.scanTimer);window.clearTimeout(this.saveTimer);
     for(const observer of this.observers.values())observer.disconnect();this.observers.clear();
+    for(const [view,binding] of this.enterBindings)view.scope.unregister(binding);
+    this.enterBindings.clear();
     for(const modal of this.popups)modal.close();
     for(const node of this.mounted.keys())this.unmount(node);
     this.flush();

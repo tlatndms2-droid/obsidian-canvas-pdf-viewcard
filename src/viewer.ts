@@ -47,6 +47,11 @@ export class PdfViewer {
   private win: Window;
   private keyScope: Scope;
   private scopeActive = false;
+  private reading = false;
+  private readingHint?: HTMLDivElement;
+  private outside = (event: PointerEvent) => {
+    if (!this.root.contains(event.target as Node) && !(event.target as Element).closest(".menu")) this.exitReading();
+  };
 
   constructor(parent: HTMLElement, private options: ViewerOptions) {
     this.win = parent.ownerDocument.defaultView!;
@@ -73,14 +78,20 @@ export class PdfViewer {
       this.button(this.toolbar, "maximize", "크게 보기", () => options.open?.());
     }
     this.viewport = this.root.createDiv({cls:"cpv-viewport"});
-    this.viewport.tabIndex = 0;
+    this.reading = options.popup;
+    this.viewport.tabIndex = options.popup ? 0 : -1;
+    if(!options.popup) {
+      this.readingHint=this.root.createDiv({cls:"cpv-reading-hint",text:"Enter 읽기 · Ctrl+Enter 미리보기"});
+      this.readingHint.setAttribute("role","status");
+      this.readingHint.setAttribute("aria-live","polite");
+    }
     this.viewport.setAttribute("aria-label", "PDF 페이지");
     // Handle reading keys in Obsidian's keymap, before Canvas's nudge bindings.
     // A DOM keydown listener runs too late to stop those bindings.
     this.keyScope = new Scope(options.parentScope);
     for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown"]) {
       this.keyScope.register(null, key, event => {
-        if (!this.root.contains(this.root.ownerDocument.activeElement)) return;
+        if (!this.reading || !this.root.contains(this.root.ownerDocument.activeElement)) return;
         // Keep number-input editing native while preventing Canvas shortcuts.
         if (event.target instanceof this.input.ownerDocument.defaultView!.HTMLInputElement) {
           event.stopPropagation();
@@ -97,8 +108,12 @@ export class PdfViewer {
         return false;
       });
     }
-    this.root.addEventListener("focusin", () => {
-      if (!this.scopeActive) {
+    if(!options.popup) this.keyScope.register(null,"Escape",event=>{
+      event.stopPropagation();this.exitReading();return false;
+    });
+    this.root.addEventListener("focusin", event => {
+      if(!this.reading && this.toolbar.contains(event.target as Node)) this.enterReading(false);
+      if (this.reading && !this.scopeActive) {
         options.keymap.pushScope(this.keyScope);
         this.scopeActive = true;
       }
@@ -108,22 +123,29 @@ export class PdfViewer {
         if (!this.root.contains(this.root.ownerDocument.activeElement)) this.releaseKeyScope();
       });
     });
-    // Native Canvas controls may otherwise leave focus on the Canvas wrapper.
+    // Toolbar controls retain their direct actions; body clicks only select
+    // or drag the card. Enter explicitly switches to reading.
     this.root.addEventListener("pointerdown", event => {
-      if (event.button === 0 && !(event.target as Element).closest("input")) {
+      if(event.button!==0)return;
+      if((event.target as Element).closest(".cpv-toolbar")) this.enterReading();
+      if (this.reading && !(event.target as Element).closest("input")) {
         this.viewport.focus({preventScroll: true});
       }
     }, true);
     this.status = this.viewport.createDiv({cls:"cpv-status",text:"PDF를 불러오는 중…"});
     if (!options.popup) this.root.appendChild(this.toolbar);
+    this.root.classList.toggle("cpv-reading",this.reading);
+    this.root.ownerDocument.addEventListener("pointerdown",this.outside,true);
     for (const name of ["pointerdown", "mousedown", "click", "dblclick"] as const)
       this.toolbar.addEventListener(name, e => e.stopPropagation());
     this.root.addEventListener("wheel", e => {
-      if (!options.active() || e.ctrlKey || e.metaKey) return;
+      if (!this.reading || e.ctrlKey || e.metaKey) return;
       e.stopPropagation();
     }, {passive:true});
     this.viewport.addEventListener("pointerdown", e => {
-      if(options.popup || options.active()) e.stopPropagation();
+      if(e.button!==0)return;
+      if(this.reading) {e.stopPropagation();return;}
+      e.preventDefault();
     });
     this.viewport.addEventListener("dblclick", e => {
       if(!options.popup) {e.preventDefault();e.stopPropagation();options.open?.();}
@@ -138,6 +160,25 @@ export class PdfViewer {
     });
     this.resize.observe(this.viewport);
     void this.load();
+  }
+  private enterReading(focus = true) {
+    if(this.disposed)return;
+    this.reading=true;this.root.classList.add("cpv-reading");
+    this.viewport.tabIndex=0;
+    if(this.readingHint)this.readingHint.textContent="읽기 중 · Enter 복귀 · Ctrl+Enter 미리보기";
+    if(focus)this.viewport.focus({preventScroll:true});
+  }
+  toggleReading() {
+    if(this.reading)this.exitReading();else this.enterReading();
+  }
+  exitReading() {
+    if(this.options.popup)return;
+    this.reading=false;this.root.classList.remove("cpv-reading");
+    this.viewport.tabIndex=-1;this.releaseKeyScope();
+    if(this.readingHint)this.readingHint.textContent="Enter 읽기 · Ctrl+Enter 미리보기";
+    if(this.root.contains(this.root.ownerDocument.activeElement)) {
+      (this.root.closest(".canvas-wrapper") as HTMLElement|null)?.focus({preventScroll:true});
+    }
   }
   private button(parent: HTMLElement, icon: string, label: string, action: () => void): HTMLButtonElement {
     const b=parent.createEl("button",{cls:"cpv-icon-button",attr:{"aria-label":label,title:label}});
@@ -304,6 +345,7 @@ export class PdfViewer {
   }
   destroy() {
     this.disposed=true;++this.generation;
+    this.root.ownerDocument.removeEventListener("pointerdown",this.outside,true);
     this.releaseKeyScope();
     this.menu?.hide();this.resize.disconnect();this.win.clearTimeout(this.resizeTimer);this.win.clearTimeout(this.navTimer);
     this.win.cancelAnimationFrame(this.frame);this.cancelSlots();this.lease?.release();this.root.remove();

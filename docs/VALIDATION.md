@@ -1,3 +1,27 @@
+# 0.1.2 interaction validation
+
+The user approved publication of the verified Sandbox build.
+
+- PDF-body clicks select the card; repeated clicks stay in selection.
+  Arrow keys move the node without paging the PDF. Enter enters reading.
+- Reading displays a persistent status strip and accent outline.
+- Reading arrow keys navigate the PDF without moving the node.
+- Enter again, Escape, filename click and Canvas background click leave reading.
+- Ctrl+Enter from selection or reading opens the current page in the popup.
+  Enter closes the popup and restores card selection without changing
+  the card page or position. Page input keeps Enter-to-submit behavior.
+- Dragging a selected card moves it without entering reading; dragging
+  inside the PDF while reading leaves the card position unchanged.
+- Double click opens the large popup without delayed card-mode entry.
+- Small-card dark-theme status rendering checked in the Sandbox.
+- Page-input and toolbar focus, modified arrows, popup independence,
+  and returning from Canvas movement to reading pass keyboard regression.
+- The final build passes both interaction suites again after a full
+  Sandbox restart; saved card/popup settings and Canvas data are preserved.
+
+Runtime checks: `scripts/validate-reading.cjs` and
+`scripts/validate-keyboard.cjs`.
+
 # 0.1.1 keyboard regression validation
 
 Validated the final 0.1.1 build in the isolated Windows Obsidian 1.14.4

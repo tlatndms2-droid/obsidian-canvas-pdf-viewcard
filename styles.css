@@ -3,7 +3,11 @@
 .cpv-managed > .canvas-node-container { position: relative; }
 .cpv-viewer { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; color: var(--text-normal); background: var(--background-primary); }
 .cpv-card-viewer { position: absolute; inset: 0; border-radius: inherit; }
-.canvas-node:not(.is-focused) .cpv-card-viewer .cpv-viewport { overflow: hidden; }
+.cpv-card-viewer:not(.cpv-reading) .cpv-viewport { overflow: hidden; }
+.cpv-reading-hint { flex: 0 0 auto; padding: 4px 8px; font-size: 11px; text-align: center; color: var(--text-muted); background: var(--background-secondary); }
+.canvas-node:not(.is-focused) .cpv-card-viewer:not(.cpv-reading) .cpv-reading-hint { visibility: hidden; }
+.cpv-card-viewer.cpv-reading { outline: 3px solid var(--interactive-accent); outline-offset: -3px; }
+.cpv-reading .cpv-reading-hint { color: var(--text-on-accent); background: var(--interactive-accent); font-weight: 600; }
 .cpv-toolbar { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 5px 8px; min-height: 38px; background: var(--background-primary); z-index: 2; border-bottom: 1px solid var(--background-modifier-border); }
 .cpv-card-viewer .cpv-toolbar { border-bottom: none; border-top: 1px solid var(--background-modifier-border); }
 .cpv-toolbar-space { flex: 1; min-width: 0; }

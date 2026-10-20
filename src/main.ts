@@ -1,4 +1,4 @@
-import { Modal, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { Modal, Notice, Plugin, Scope, TFile, WorkspaceLeaf } from "obsidian";
 import { cardInitial, cardKey, defaultPopup, normalizeState, Settings } from "./model";
 import { PdfPool } from "./pdf-pool";
 import { PdfViewer } from "./viewer";
@@ -15,6 +15,7 @@ interface CanvasNode {
 }
 interface CanvasView {
   file?: TFile; contentEl: HTMLElement;
+  scope: Scope;
   canvas?: {nodes: Map<string,CanvasNode>;selection:Set<CanvasNode>;};
 }
 interface Mounted { node:CanvasNode; viewer:PdfViewer; file:TFile; stamp:number; key:string; subpath:string; child?:CanvasNode["child"]; dispose:()=>void }
@@ -94,6 +95,7 @@ export default class CanvasPdfViewcard extends Plugin {
     const open=()=>this.openPopup(file,viewer.state.page);
     const viewer=new PdfViewer(node.containerEl,{
       file,pool:this.pool,popup:false,
+      keymap:this.app.keymap,parentScope:view.scope,
       state:cardInitial(this.settings.cards[key],file.path,subpath),
       active:()=>view.canvas?.selection.has(node)??false,
       changed:state=>{this.settings.cards[key]={...state,file:file.path,subpath};this.persist();},
@@ -124,6 +126,7 @@ export default class CanvasPdfViewcard extends Plugin {
       modal.modalEl.classList.add("cpv-modal");modal.setTitle(file.name);
       viewer=new PdfViewer(modal.contentEl,{
         file,pool:this.pool,popup:true,state:{...this.settings.popup,page},active:()=>true,
+        keymap:this.app.keymap,parentScope:modal.scope,
         changed:state=>{const {page:_,...settings}=state;this.settings.popup=settings;this.persist();},
       });
       modal.contentEl.createDiv({cls:"cpv-popup-footer",text:"팝업에서 읽은 페이지는 카드에 반영되지 않습니다."});

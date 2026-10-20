@@ -1,4 +1,4 @@
-import { Menu, setIcon, TFile } from "obsidian";
+import { Keymap, Menu, Scope, setIcon, TFile } from "obsidian";
 import { clampPage, fitScale, isContinuous, isSpread, Layout, layouts, pageRows, ViewState } from "./model";
 import { PdfPool } from "./pdf-pool";
 
@@ -12,6 +12,8 @@ export interface ViewerOptions {
   active: () => boolean;
   changed: (state: ViewState) => void;
   open?: () => void;
+  keymap: Keymap;
+  parentScope: Scope;
 }
 export class PdfViewer {
   readonly root: HTMLDivElement;
@@ -43,6 +45,8 @@ export class PdfViewer {
   private menu?: Menu;
   private jobs = 0;
   private win: Window;
+  private keyScope: Scope;
+  private scopeActive = false;
 
   constructor(parent: HTMLElement, private options: ViewerOptions) {
     this.win = parent.ownerDocument.defaultView!;
@@ -54,7 +58,7 @@ export class PdfViewer {
     this.prev = this.button(this.toolbar, "chevron-left", "이전 페이지", () => this.go(this.state.page - (isSpread(this.state.layout) ? 2 : 1)));
     this.input = this.toolbar.createEl("input", {cls:"cpv-page-input", type:"number", attr: {"aria-label":"페이지 번호", min:"1", value:String(this.state.page)}});
     this.input.addEventListener("change", () => this.go(Number(this.input.value)));
-    this.input.addEventListener("keydown", e => { e.stopPropagation(); if(e.key === "Enter") {this.go(Number(this.input.value));this.input.blur();} });
+    this.input.addEventListener("keydown", e => { e.stopPropagation(); if(e.key === "Enter") {this.go(Number(this.input.value));this.viewport.focus({preventScroll:true});} });
     this.total = this.toolbar.createSpan({cls:"cpv-page-total",text:"/ …"});
     this.next = this.button(this.toolbar, "chevron-right", "다음 페이지", () => this.go(this.state.page + (isSpread(this.state.layout) ? 2 : 1)));
     this.toolbar.createDiv({cls:"cpv-toolbar-space"});
@@ -71,6 +75,45 @@ export class PdfViewer {
     this.viewport = this.root.createDiv({cls:"cpv-viewport"});
     this.viewport.tabIndex = 0;
     this.viewport.setAttribute("aria-label", "PDF 페이지");
+    // Handle reading keys in Obsidian's keymap, before Canvas's nudge bindings.
+    // A DOM keydown listener runs too late to stop those bindings.
+    this.keyScope = new Scope(options.parentScope);
+    for (const key of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "PageUp", "PageDown"]) {
+      this.keyScope.register(null, key, event => {
+        if (!this.root.contains(this.root.ownerDocument.activeElement)) return;
+        // Keep number-input editing native while preventing Canvas shortcuts.
+        if (event.target instanceof this.input.ownerDocument.defaultView!.HTMLInputElement) {
+          event.stopPropagation();
+          return;
+        }
+        event.stopPropagation();
+        if (!event.ctrlKey && !event.metaKey && !event.altKey) {
+          if (key === "ArrowUp" || key === "ArrowDown") {
+            this.viewport.scrollBy({top: key === "ArrowDown" ? 80 : -80});
+          } else {
+            this.go(this.state.page + (key === "ArrowRight" || key === "PageDown" ? 1 : -1));
+          }
+        }
+        return false;
+      });
+    }
+    this.root.addEventListener("focusin", () => {
+      if (!this.scopeActive) {
+        options.keymap.pushScope(this.keyScope);
+        this.scopeActive = true;
+      }
+    });
+    this.root.addEventListener("focusout", () => {
+      queueMicrotask(() => {
+        if (!this.root.contains(this.root.ownerDocument.activeElement)) this.releaseKeyScope();
+      });
+    });
+    // Native Canvas controls may otherwise leave focus on the Canvas wrapper.
+    this.root.addEventListener("pointerdown", event => {
+      if (event.button === 0 && !(event.target as Element).closest("input")) {
+        this.viewport.focus({preventScroll: true});
+      }
+    }, true);
     this.status = this.viewport.createDiv({cls:"cpv-status",text:"PDF를 불러오는 중…"});
     if (!options.popup) this.root.appendChild(this.toolbar);
     for (const name of ["pointerdown", "mousedown", "click", "dblclick"] as const)
@@ -86,12 +129,6 @@ export class PdfViewer {
       if(!options.popup) {e.preventDefault();e.stopPropagation();options.open?.();}
     });
     this.viewport.addEventListener("scroll", () => this.scheduleVisible(), {passive:true});
-    this.viewport.addEventListener("keydown", e => {
-      if(["ArrowRight","PageDown","ArrowLeft","PageUp"].includes(e.key)) {
-        e.preventDefault();e.stopPropagation();
-        this.go(this.state.page + (["ArrowRight","PageDown"].includes(e.key) ? 1 : -1));
-      }
-    });
     this.resize = new ResizeObserver(() => {
       const w=this.viewport.clientWidth, h=this.viewport.clientHeight;
       if(w===this.lastWidth && h===this.lastHeight) return;
@@ -105,6 +142,12 @@ export class PdfViewer {
   private button(parent: HTMLElement, icon: string, label: string, action: () => void): HTMLButtonElement {
     const b=parent.createEl("button",{cls:"cpv-icon-button",attr:{"aria-label":label,title:label}});
     setIcon(b,icon);b.addEventListener("click",action);return b;
+  }
+  private releaseKeyScope() {
+    if (this.scopeActive) {
+      this.options.keymap.popScope(this.keyScope);
+      this.scopeActive = false;
+    }
   }
   private textButton(parent:HTMLElement,text:string,label:string,action:()=>void):HTMLButtonElement {
     const b=parent.createEl("button",{cls:"cpv-text-button",attr:{"aria-label":label}});
@@ -261,6 +304,7 @@ export class PdfViewer {
   }
   destroy() {
     this.disposed=true;++this.generation;
+    this.releaseKeyScope();
     this.menu?.hide();this.resize.disconnect();this.win.clearTimeout(this.resizeTimer);this.win.clearTimeout(this.navTimer);
     this.win.cancelAnimationFrame(this.frame);this.cancelSlots();this.lease?.release();this.root.remove();
   }

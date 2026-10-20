@@ -1,3 +1,26 @@
+# 0.1.1 keyboard regression validation
+
+Validated the final 0.1.1 build in the isolated Windows Obsidian 1.14.4
+Sandbox, then repeated keyboard checks after a full process restart.
+
+- TypeScript check, production bundle and five model tests passed.
+- Actual PDF clicks, page-button clicks and page input followed by Enter
+  retain reading focus. Left/Right and Page Up/Down change the PDF page
+  without changing the node coordinates or Canvas viewport.
+- Up/Down, Shift+arrow keys and Ctrl+Right do not move the card while reading.
+- Numeric input editing does not nudge the card.
+- Popup keyboard navigation leaves the card page and position unchanged;
+  Escape closes the popup.
+- Clicking the filename restores native Canvas arrow-key movement.
+  Clicking back into the PDF restores reading-key protection.
+- Restart preserves all saved card/popup settings and Canvas node data.
+  Visible cards restore their corresponding saved page and view settings.
+- Test-induced position and page changes are restored to the pre-test state.
+
+The automated runtime regression is `scripts/validate-keyboard.cjs`.
+The check targets the isolated Sandbox; unrelated third-party Canvas
+extensions and the user's production vault were not part of this run.
+
 # 0.1.0 validation
 
 Validated on Windows in an isolated Obsidian Sandbox. Initial runtime was

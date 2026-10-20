@@ -79,7 +79,7 @@ export default class CanvasPdfViewcard extends Plugin {
         const key=cardKey(view.file.path,node.id),subpath=data.subpath??"";
         const existing=this.mounted.get(node);
         if(existing&&(existing.key!==key||existing.file.path!==file.path||existing.stamp!==file.stat.mtime||existing.subpath!==subpath||!existing.viewer.root.isConnected)){
-          this.unmount(node); 
+          this.unmount(node);
         }
         if(!this.mounted.has(node))this.mount(view,node,file,key,subpath);
         const m=this.mounted.get(node);

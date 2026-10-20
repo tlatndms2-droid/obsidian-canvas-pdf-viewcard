@@ -23,6 +23,11 @@ build was checked again on Obsidian 1.14.4.
 - Disabling the plugin recreates the native PDF toolbar and document.
 - Full process restart restores plugin 0.1.0, card/popup settings and Canvas data.
 - Final source and Sandbox installation hashes match for all three release assets.
+- Public 0.1.0 release downloads match the validated local assets by SHA-256.
+- BRAT 2.2.0 registered and downloaded the public repository's latest release;
+  the plugin is active at 0.1.0 and its popup was exercised after installation.
+  JavaScript and CSS match byte-for-byte. BRAT rewrites the manifest's JSON
+  whitespace; parsed manifest fields match exactly.
 
 The test fixtures use generated 12-page PDFs. Very large production documents,
 mobile Obsidian and unrelated third-party Canvas extensions were not tested.
